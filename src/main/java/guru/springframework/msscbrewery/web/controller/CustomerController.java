@@ -7,7 +7,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.ConstraintViolationException;
+import javax.validation.Valid;
+import javax.validation.ValidationException;
+import javax.validation.constraints.NotBlank;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Created by jt on 2019-04-21.
@@ -24,13 +31,13 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}")
-    public ResponseEntity<CustomerDto> getCustomer(@PathVariable("customerId")  UUID customerId){
+    public ResponseEntity<CustomerDto> getCustomer(@PathVariable("customerId") UUID customerId) {
 
         return new ResponseEntity<>(customerService.getCustomerById(customerId), HttpStatus.OK);
     }
 
     @PostMapping
-    public ResponseEntity handlePost(CustomerDto customerDto){
+    public ResponseEntity handlePost(@RequestBody @Valid CustomerDto customerDto) {
         CustomerDto savedDto = customerService.saveNewCustomer(customerDto);
 
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -41,12 +48,21 @@ public class CustomerController {
 
     @PutMapping("/{customerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void handleUpdate(@PathVariable("customerId") UUID customerId, CustomerDto customerDto){
+    public void handleUpdate(@PathVariable("customerId") @NotBlank UUID customerId,
+                             @RequestBody @Valid CustomerDto customerDto) {
         customerService.updateCustomer(customerId, customerDto);
     }
 
     @DeleteMapping("/{customerId}")
-    public void deleteById(@PathVariable("customerId")  UUID customerId){
+    public void deleteById(@PathVariable("customerId") UUID customerId) {
         customerService.deleteById(customerId);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> validationExceptionHandler(ConstraintViolationException exception) {
+        var violations = exception.getConstraintViolations().stream()
+                .map(e -> e.getPropertyPath() + " : " + e.getMessage())
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(violations, HttpStatus.BAD_REQUEST);
     }
 }
